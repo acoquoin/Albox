@@ -160,7 +160,7 @@
 			if(!$.isEmptyObject(settings.steps)) {
 				settings.mode = 'steps';
 				settings.stepsKeys = Object.keys(settings.steps);
-				if('NaN' !== parseInt(settings.current, 10)) {
+				if(parseInt(settings.current, 10)) {
 					settings.current = Math.min(Math.max(settings.current - 1, 1), settings.stepsKeys.length);
 				} else {
 					settings.current = Math.max($.inArray(settings.current, settings.stepsKeys), 0);
@@ -366,6 +366,7 @@
 			this.$content.find('.lb-box')
 				.removeClass('lb-loading')
 				.addClass('lb-' + this.settings.mode);
+			return this;
 		},
 		// Change title and subtitle
 		title: function(title, subtitle) {
@@ -513,7 +514,7 @@
 				// If not load : error
 				imgLoad.onerror = function() {
 					// Close current Albox
-					$this.close(function() {
+					$this.stopLoading().close(function() {
 						$.albox.alert();
 					});
 				};
@@ -594,8 +595,9 @@
 								$this.settings.afterShow();
 							});
 						} else {
+							this.$content.find('.lb-previous').removeClass('lb-disable');
 							// Close current Albox
-							this.close(function() {
+							this.stopLoading().close(function() {
 								$.albox.alert();
 							});
 						}
@@ -644,7 +646,7 @@
 									if('steps' === $this.settings.mode) {
 										// If we haven't the urrent steps
 										if($('#' + $this.settings.stepsKeys[$this.settings.current], content).length < 1) {
-											$this.close(function() {
+											$this.stopLoading().close(function() {
 												$.albox.alert();
 											});
 										}
@@ -668,14 +670,14 @@
 						// Error time !
 						}).error(function(error) {
 							// Close box
-							$this.close(function() {
+							$this.stopLoading().close(function() {
 								$.albox.alert(error.status + ' - ' + error.statusText);
 							});
 						});
 					}
 				} else {
 					// Close box
-					this.close(function() {
+					this.stopLoading().close(function() {
 						$.albox.alert();
 					});
 				}
