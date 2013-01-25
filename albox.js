@@ -39,7 +39,7 @@
 
 		if(Albox.stack.length > 1) {
 			for(var i in Albox.stack) {
-				if(typeof Albox.stack[i].settings !== 'undefined') {
+				if('undefined' !== typeof Albox.stack[i].settings) {
 					if((settings.url && settings.url === Albox.stack[i].settings.url) || (!settings.url && settings.content === Albox.stack[i].settings.content)) {
 						countStack++;
 					}
@@ -50,9 +50,9 @@
 			}
 		}
 		this.init(settings);
-		if(typeof settings.callbacks === 'object') {
+		if('object' === typeof settings.callbacks) {
 			for(var j in settings.callbacks) {
-				if(typeof this.settings.context[j] === 'undefined') {
+				if('undefined' === typeof this.settings.context[j]) {
 					this.settings.context[j] = settings.callbacks[j];
 				}
 			}
@@ -75,7 +75,7 @@
 	Albox.pop = function(instance) {
 		Albox.stack.shift(instance);
 		Albox.instance = Albox.stack[0] || null;
-		$albox = Albox.instance === null ? null : Albox.instance.$content.find('.lb-content');
+		$albox = null === Albox.instance ? null : Albox.instance.$content.find('.lb-content');
 	};
 
 	// Rewrite config
@@ -100,17 +100,17 @@
 		locale: {
 			close: '&times;',
 			navigate : {
-				previous: '&lsaquo; pr&eacute;c&eacute;dent',
-				next: 'suivant &rsaquo;',
-				close: 'fermer',
-				stop: 'terminer'
+				previous: '&lsaquo; previous',
+				next: 'next &rsaquo;',
+				close: 'close',
+				stop: 'stop'
 			},
 			alert: {
 				notFound: '404 - Not Found',
-				close: 'Fermeture automatique dans',
+				close: 'Automatically close in',
 				seconds:  {
-					singular: 'seconde',
-					plural: 'secondes'
+					singular: 'second',
+					plural: 'seconds'
 				}
 			}
 		},
@@ -160,7 +160,7 @@
 			if(!$.isEmptyObject(settings.steps)) {
 				settings.mode = 'steps';
 				settings.stepsKeys = Object.keys(settings.steps);
-				if(parseInt(settings.current, 10) !== 'NaN') {
+				if('NaN' !== parseInt(settings.current, 10)) {
 					settings.current = Math.min(Math.max(settings.current - 1, 1), settings.stepsKeys.length);
 				} else {
 					settings.current = Math.max($.inArray(settings.current, settings.stepsKeys), 0);
@@ -188,14 +188,14 @@
 					.hide()
 					.end()
 				.find('.lb-close')
-					.html(this.settings.mode === 'image' ? this.settings.locale.navigate.close : this.settings.locale.close)
+					.html('image' === this.settings.mode ? this.settings.locale.navigate.close : this.settings.locale.close)
 					.end();
 			// Assign global var $albox
 			$albox = this.$content.find('.lb-content');
 			// Hide controls
 			this.$content.find('.lb-header, .lb-footer, .lb-navigate').hide();
 			// Allow or disallow to clone box ?
-			if(this.settings.close === true) {
+			if(true === this.settings.close) {
 				this.$content.on('click', '.lb-overlay, .lb-close', function() {
 					$this.close();
 				});
@@ -203,7 +203,7 @@
 				this.$content.find('.lb-close').hide();
 			}
 			// Button options ? Okay, make it
-			if(this.settings.button !== null) {
+			if(null !== this.settings.button) {
 				$.each(this.settings.button, function(index, value) {
 					var input = $('<input />').attr({
 						'type' : 'button',
@@ -222,7 +222,7 @@
 				this.$content.find('.lb-footer').remove();
 			}
 			// Image mode
-			if(this.settings.mode === 'image') {
+			if('image' === this.settings.mode) {
 				if(this.settings.current > 0) {
 					this.$content.find('.lb-previous').removeClass('lb-disable');
 				} else {
@@ -238,14 +238,14 @@
 					.find('.lb-previous')
 						.html(this.settings.locale.navigate.previous)
 						.on('click', function() {
-							if($(this).hasClass('lb-disable') === false) {
+							if(false === $(this).hasClass('lb-disable')) {
 								$this.gallery($this.settings.current - 1);
 							}
 						})
 						.end()
 					.find('.lb-next')
 						.on('click', function() {
-							if($(this).hasClass('lb-disable') === false) {
+							if(false === $(this).hasClass('lb-disable')) {
 								if($(this).text() === $this.settings.locale.navigate.close) {
 									$this.close();
 								} else {
@@ -256,14 +256,14 @@
 						.end();
 			}
 			// Steps mode
-			if(this.settings.mode === 'steps') {
+			if('steps' === this.settings.mode) {
 				// Button callbacks
 				this.$content
 					.find('.lb-previous')
 						.html(this.settings.locale.navigate.previous)
 						.on('click', function() {
-							if($(this).hasClass('lb-disable') === false) {
-								if($this.settings.beforePrevStep($this.settings.stepsKeys[$this.settings.current], $this.settings.current + 1) !== false) {
+							if(false === $(this).hasClass('lb-disable')) {
+								if(false !== $this.settings.beforePrevStep($this.settings.stepsKeys[$this.settings.current], $this.settings.current + 1)) {
 									$this.steps($this.settings.current - 1);
 								}
 							}
@@ -272,8 +272,8 @@
 					.find('.lb-next')
 						.html(this.settings.locale.navigate.next)
 						.on('click', function() {
-							if($(this).hasClass('lb-disable') === false) {
-								if($this.settings.beforeNextStep($this.settings.stepsKeys[$this.settings.current], $this.settings.current + 1) !== false) {
+							if(false === $(this).hasClass('lb-disable')) {
+								if(false !== $this.settings.beforeNextStep($this.settings.stepsKeys[$this.settings.current], $this.settings.current + 1)) {
 									if($(this).text() === $this.settings.locale.navigate.stop) {
 										$this.close();
 									} else {
@@ -285,7 +285,7 @@
 						.end();
 				// In steps mode, disable first and last :input tab selector
 				$albox.on('keypress', ':input:visible:first,:input:visible:last', function(event) {
-					if(event.keyCode === 9) {
+					if(9 === event.keyCode) {
 						event.preventDefault();
 					}
 				});
@@ -294,7 +294,7 @@
 		// Steps navigation
 		steps: function(index) {
 			// Display controls ?
-			if(this.settings.mode === 'steps' && index >= 0 && index < this.settings.stepsKeys.length) {
+			if('steps' === this.settings.mode && index >= 0 && index < this.settings.stepsKeys.length) {
 				// Ref
 				var $this = this;
 				// Okay, step > 1
@@ -370,12 +370,12 @@
 		// Change title and subtitle
 		title: function(title, subtitle) {
 			this.$content.find('.lb-title')
-				.html((title || this.settings.title) + (typeof subtitle !== 'undefined' && subtitle.length > 0 ? '<span>' + subtitle + '</span>' : ''));
+				.html((title || this.settings.title) + ('undefined' !== typeof subtitle && subtitle.length > 0 ? '<span>' + subtitle + '</span>' : ''));
 			return this.$content.find('.lb-title');
 		},
 		// Open in window.open on picture's zooming
 		zoomable: function(enable) {
-			if(enable === true && this.settings.zoom === true) {
+			if(true === enable && true === this.settings.zoom) {
 				// Ref
 				var $this = this;
 				// Okay, we can zoom in it
@@ -398,7 +398,7 @@
 					Math.max(
 						element.width,
 						parseInt(this.settings.minWidth, 10),
-						(this.settings.width === 'auto' ? 0 : parseInt(this.settings.width, 10))
+						('auto' === this.settings.width ? 0 : parseInt(this.settings.width, 10))
 					)
 				),
 				height: Math.min(
@@ -406,7 +406,7 @@
 					Math.max(
 						element.height,
 						parseInt(this.settings.minHeight, 10),
-						(this.settings.height === 'auto' ? 0 : parseInt(this.settings.height, 10))
+						('auto' === this.settings.height ? 0 : parseInt(this.settings.height, 10))
 					)
 				)
 			};
@@ -416,7 +416,7 @@
 			// Assign this
 			var $this = this;
 			// Ensure we can close modal
-			if(this.$content.find('.lb-box').hasClass('lb-loading') === false) {
+			if(false === this.$content.find('.lb-box').hasClass('lb-loading')) {
 				// Callback
 				this.settings.beforeClose();
 				// Hide box
@@ -428,9 +428,9 @@
 						// Callback
 						$this.settings.afterClose();
 						// Personal callbacks
-						if(typeof $this.settings.callbacks === 'object'){
+						if('object' === typeof $this.settings.callbacks){
 							for(var i in $this.settings.callbacks){
-								if(typeof $this.settings.context[i] !== 'undefined'){
+								if('undefined' !== typeof $this.settings.context[i]){
 									// Destroy it !
 									$($this.settings.context).removeData($this.settings.callbacks[i]);
 								}
@@ -439,7 +439,7 @@
 						// Pop from stack
 						Albox.pop();
 						// Internal callback
-						if(typeof callback === 'function') {
+						if('function' === typeof callback) {
 							callback();
 						}
 					});
@@ -473,7 +473,7 @@
 				easing: 'linear', 
 				step: function(now, fx) {
 					// Move box during animation from top and left
-					if(fx.prop === 'width') {
+					if('width' === fx.prop) {
 						box.css('left', (size.window.width - parseInt(now, 10)) / 2);
 					} else {
 						box.css('top', (size.window.height - parseInt(now, 10)) / 2);
@@ -485,7 +485,7 @@
 					// Callback
 					$this.settings.afterPos(size.box);
 					// Internal Callback
-					if(typeof callback === 'function') {
+					if('function' === typeof callback) {
 						callback(size.box);
 					}
 				}
@@ -498,7 +498,7 @@
 			// Callback
 			this.settings.afterLoad();
 			// Image case
-			if(this.settings.mode === 'image') {
+			if('image' === this.settings.mode) {
 				// Gallery mode
 				if(this.settings.items.length > 0) {
 					// Update settings
@@ -564,7 +564,7 @@
 			// Other cases
 			} else {
 				// Live content
-				if(this.settings.content !== null) {
+				if(null !== this.settings.content) {
 					// Remove loading
 					this.stopLoading();
 					// Update html
@@ -577,9 +577,9 @@
 						$this.settings.afterShow();
 					});
 				// Url 
-				} else if(this.settings.url !== null) {
+				} else if(null !== this.settings.url) {
 					// CSS selector
-					if(this.settings.url.substr(0, 1).search(/#|\./) !== -1) {
+					if(-1 !== this.settings.url.substr(0, 1).search(/#|\./)) {
 						// Element exist ?
 						if($(this.settings.url).length) {
 							// Remove loading
@@ -600,12 +600,12 @@
 							});
 						}
 					// Iframe
-					} else if(this.settings.url.match(/^https?:\/\//i) || this.settings.iframe === true) {
+					} else if(this.settings.url.match(/^https?:\/\//i) || true === this.settings.iframe) {
 						// Update settings if auto height of auto width
-						if(this.settings.width === 'auto') {
+						if('auto' === this.settings.width) {
 							$.extend(this.settings, {width: 1E6});
 						}
-						if(this.settings.height === 'auto') {
+						if('auto' === this.settings.height) {
 							$.extend(this.settings, {height: 1E6});
 						}
 						// Update title
@@ -617,7 +617,7 @@
 							.fadeTo(0, 0)
 							.css('height', this.safeSize(this.$content.find('.lb-box')).height - this.$content.find('.lb-header').height())
 							.load(function() {
-								if($albox !== null) {
+								if(null !== $albox) {
 									// Remove loading
 									$this.stopLoading();
 									// Center it
@@ -633,7 +633,7 @@
 							})
 							.appendTo($albox);
 					// Ajax
-					} else if(this.settings.url !== null) {
+					} else if(null !== this.settings.url) {
 						$.post(this.settings.url,  this.settings.post, function(content) {
 							// Remove loading
 							$this.stopLoading();
@@ -641,7 +641,7 @@
 							$albox.hide()
 								.html(function() {
 									// In steps mode
-									if($this.settings.mode === 'steps') {
+									if('steps' === $this.settings.mode) {
 										// If we haven't the urrent steps
 										if($('#' + $this.settings.stepsKeys[$this.settings.current], content).length < 1) {
 											$this.close(function() {
@@ -749,7 +749,7 @@
 	};
 	// Alert mod 
 	$.albox.alert = function(message, timeout, callback) {
-		timeout = (typeof timeout === 'undefined' ? 4 : timeout);
+		timeout = ('undefined' === typeof timeout ? 4 : timeout);
 		$.albox({
 			content : message,
 			close: false,
@@ -781,7 +781,7 @@
 			},
 			afterClose: function() {
 				// Callback
-				if (typeof callback === 'function') {
+				if ('function' === typeof callback) {
 					callback();
 				}
 			}
@@ -822,16 +822,16 @@
 			// Images stack
 			var items = [];
 			// Fold image
-			$($(this).attr('rel').search(/albox-gallery/i) !== -1 ? '*[rel^=albox-gallery]' : this).each(function() {
+			$(-1 !== $(this).attr('rel').search(/albox-gallery/i) ? '*[rel^=albox-gallery]' : this).each(function() {
 				items.push({
 					url: $(this).attr('src') || $(this).attr('href'),
 					title: $(this).attr('title') || '',
 					description: $(this).attr('rev') || '',
-					zoom: $(this).attr('rel').search(/zoom/i) !== -1
+					zoom: -1 !== $(this).attr('rel').search(/zoom/i)
 				});
 			});
 			// Single image
-			if(items.length === 1) {
+			if(1 === items.length) {
 				$.albox(items[0], 'image');
 			// Gallery
 			} else if(items.length > 1) {
@@ -854,12 +854,12 @@
 
 		// Using keyboard ?
 		$(document).keypress(function(event) {
-			if(Albox.stack.length && Albox.instance.settings.keyboard === true) {
-				if(event.keyCode === 37) { // left
+			if(Albox.stack.length && true === Albox.instance.settings.keyboard) {
+				if(37 === event.keyCode) { // left
 					$.albox.previous();
-				} else if(event.keyCode === 39) { // right
+				} else if(39 === event.keyCode) { // right
 					$.albox.next();
-				} else if(event.keyCode === 27 && Albox.instance.settings.close === true) { // escape
+				} else if(27 === event.keyCode && true === Albox.instance.settings.close) { // escape
 					$.albox.close();
 				}
 			}
