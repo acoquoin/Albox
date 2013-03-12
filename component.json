@@ -1,0 +1,8 @@
+{
+    "name": "albox",
+    "version": "1.0.0",
+    "main": ["./albox.js", "./albox.css"],
+    "dependencies": {
+        "jquery": "~1.7.2"
+    }
+}
