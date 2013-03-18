@@ -16,7 +16,6 @@
  * FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
- * Date: Fri Jan 25 2013 08:54:39 GMT+0100 (CET)
  */
 
 (function($) {
@@ -28,32 +27,25 @@
 	// Global var declaration
 	var $albox = null;
 
-	// Global settings
-	var AlboxSettings;
-
 	// Stacking
 	var Albox = function(settings, mode) {
-		var countStack = 0;
-
-		settings = $.extend({mode: mode || 'html'}, settings, AlboxSettings);
-
-		if(Albox.stack.length > 1) {
-			for(var i in Albox.stack) {
-				if('undefined' !== typeof Albox.stack[i].settings) {
-					if((settings.url && settings.url === Albox.stack[i].settings.url) || (!settings.url && settings.content === Albox.stack[i].settings.content)) {
-						countStack++;
-					}
-				}
-			}
-			if(countStack > 1) {
-				return false;
+		// Steps mode, okay assign some datas
+		if(false === $.isEmptyObject(settings.steps)) {
+			mode = 'steps';
+			settings.stepsKeys = Object.keys(settings.steps);
+			if('number' === typeof settings.current) {
+				settings.current = Math.min(Math.max(settings.current - 1, 1), settings.items.length);
+			} else {
+				settings.current = Math.max($.inArray(settings.current, settings.stepsKeys), 0);
 			}
 		}
-		this.init(settings);
+		// Init
+		this.init($.extend(settings, {mode: mode}));
+		// Assigndifferent callback
 		if('object' === typeof settings.callbacks) {
-			for(var j in settings.callbacks) {
-				if('undefined' === typeof this.settings.context[j]) {
-					this.settings.context[j] = settings.callbacks[j];
+			for(var i in settings.callbacks) {
+				if('undefined' === typeof this.settings.context[i]) {
+					this.settings.context[i] = settings.callbacks[i];
 				}
 			}
 		}
@@ -75,7 +67,7 @@
 	Albox.pop = function(instance) {
 		Albox.stack.shift(instance);
 		Albox.instance = Albox.stack[0] || null;
-		$albox = null === Albox.instance ? null : Albox.instance.$content.find('.lb-content');
+		$albox = $.albox.content();
 	};
 
 	// Rewrite config
@@ -85,45 +77,37 @@
 
 	// Default Settings
 	Albox.settings = {
+		mode: 'html',
 		context: $('body'),
 		append: 'body',
 		title: '',
 		description: '',
 		url: null,
 		content: null,
+		get: {},
 		post: {},
-		keyboard: true,
+		crossDomain: false,
+		//keyboard: true,
 		current: null,
 		steps: {},
 		items: [],
 		stepsKeys: [],
 		locale: {
-			close: '&times;',
-			navigate : {
-				previous: '&lsaquo; previous',
-				next: 'next &rsaquo;',
-				close: 'close',
-				stop: 'stop'
-			},
-			alert: {
-				notFound: '404 - Not Found',
-				close: 'Automatically close in',
-				seconds:  {
-					singular: 'second',
-					plural: 'seconds'
-				}
-			}
+			close: 'close',
+			previous: '&lsaquo; previous',
+			next: 'next &rsaquo;',
+			error: 'An error has occured !',
+			autoClose: 'Automatically close in <x> <second|seconds>.'
 		},
-		overlay: '.5',
-		speed: 200,
+		//overlay: '.5',
+		//speed: 200,
 		close: true,
 		skin: 'default',
-		width: 'auto',
-		minWidth: 320,
-		margin: 30,
 		height: 'auto',
-		minHeight: 0,
-		button: null,
+		width: 'auto',
+		minWidth: 420,
+		margin: 30,
+		button: {},
 		zoom: false,
 		afterShow: $.noop,
 		beforeLoad: $.noop,
@@ -135,13 +119,7 @@
 		beforeNextStep: $.noop,
 		beforePrevStep: $.noop,
 		afterStepLoad: $.noop,
-		callbacks: {},
-		render: {
-			html: '<div class="albox"><div class="lb-overlay"></div><div class="lb-box lb-loading"><div class="lb-header"><div class="lb-close"></div><div class="lb-title"></div></div><div class="lb-content"></div><div class="lb-footer"></div></div></div>',
-			alert: '<div class="albox"><div class="lb-overlay"></div><div class="lb-box lb-alert"><div class="lb-content"></div></div></div>',
-			image: '<div class="albox"><div class="lb-overlay"></div><div class="lb-box lb-loading"><div class="lb-header"><div class="lb-close"></div><div class="lb-title"></div></div><div class="lb-content"></div><div class="lb-navigate"><a href="#" class="lb-previous lb-disable"></a><span class="lb-count"></span><a href="#" class="lb-next lb-disable"></a></div></div></div>',
-			steps: '<div class="albox"><div class="lb-overlay"></div><div class="lb-box lb-loading"><div class="lb-header"><div class="lb-close"></div><div class="lb-title"></div></div><div class="lb-content"></div><div class="lb-navigate"><a href="#" class="lb-previous lb-disable"></a><span class="lb-count"></span><a href="#" class="lb-next lb-disable"></a></div></div></div>'
-		}
+		callbacks: {}
 	};
 
 	/**
@@ -156,140 +134,146 @@
 			var $this = this;
 			// Stack this instance
 			Albox.push(this);
-			// Steps mode, okay assign some datas
-			if(!$.isEmptyObject(settings.steps)) {
-				settings.mode = 'steps';
-				settings.stepsKeys = Object.keys(settings.steps);
-				if(parseInt(settings.current, 10)) {
-					settings.current = Math.min(Math.max(settings.current - 1, 1), settings.stepsKeys.length);
-				} else {
-					settings.current = Math.max($.inArray(settings.current, settings.stepsKeys), 0);
-				}
-			}
 			// Extend settings
 			this.settings = $.extend({}, Albox.settings, settings || {});
 			// Callback beforeLoad
 			this.settings.beforeLoad();
+			
+			
+			
+			
 			//Generate HTML box et append it
-			this.$content = $(this.settings.render[this.settings.mode])
+			var render = '<div class="albox ' + this.settings.skin + '">';
+			render += '<div data-albox="overlay"></div>';
+			render += '<div data-albox="loading"></div>';
+			render += '<div data-albox="box" data-albox-mode="' + this.settings.mode + '">';
+			render += '<div data-albox="header">';
+			render += '<button data-albox="close" type="button">&times;</button>';
+			render += '<h3 data-albox="title">' + this.settings.title + '</h3>';
+			render += '</div>';
+			render += '<div data-albox="content"></div>';
+			render += '<div data-albox="footer">';
+			render += '<span data-albox="count"></span>';
+			render += '<a href="#" data-albox="prev" class="disabled"></a>';
+			render += '<a href="#" data-albox="next" class="disabled"></a>';
+			render += '</div>';
+			render += '</div>';
+			render += '</div>';
+			
+			
+			
+			
+			
+			this.$content = $(render)
 				.appendTo(this.settings.append)
-				.addClass(this.settings.skin)
-				.find('.lb-overlay')
+				.css('z-index', 1E5 + Albox.stack.length * 1E4)
+				.find('[data-albox=overlay]')
 					.hide()
-					.css('z-index', 1E5 + (Albox.stack.length * 1E3))
-					.fadeTo(this.settings.speed, this.settings.overlay, function() {
-						$this.$content.find('.lb-box').fadeIn($this.settings.speed, function() {
-							$this.reveal();
-						});
+					.css('z-index', 1E5 + Albox.stack.length * 1E4 + 1)
+					.fadeIn(200, function() {
+						$this.reveal();
 					})
 					.end()
-				.find('.lb-box')
-					.css('z-index', 1E5 + 10 + (Albox.stack.length * 1E3))
-					.hide()
+				.find('[data-albox=box]')
+					.css('z-index', 1E5 + Albox.stack.length * 1E4 + 2)
 					.end()
-				.find('.lb-close')
-					.html('image' === this.settings.mode ? this.settings.locale.navigate.close : this.settings.locale.close)
+				.find('[data-albox=loading]')
+					.css('z-index', 1E5 + Albox.stack.length * 1E4 + 3)
 					.end();
+			// Bootstrap compatible
+			if('bootstrap' === this.settings.skin) {
+				this.$content
+					.find('[data-albox=box]').addClass('modal').end()
+					.find('[data-albox=header]').addClass('modal-header').end()
+					.find('[data-albox=close]').addClass('close').end()
+					.find('[data-albox=content]').addClass('modal-body').end()
+					.find('[data-albox=footer]').addClass('modal-footer').end()
+					.find('[data-albox=count]').addClass('muted').end()
+					.find('[data-albox=prev]').addClass('btn btn-small pull-left').end()
+					.find('[data-albox=next]').addClass('btn btn-small pull-right');
+			}
 			// Assign global var $albox
-			$albox = this.$content.find('.lb-content');
+			$albox = $.albox.content();
 			// Hide controls
-			this.$content.find('.lb-header, .lb-footer, .lb-navigate').hide();
-			// Allow or disallow to clone box ?
+			this.$content.find('[data-albox=content], [data-albox=footer], [data-albox=close], [data-albox=title]').css('visibility', 'hidden');
+
+			this.safeContentPosition();
+
+			// Allow or disallow to close box ?
 			if(true === this.settings.close) {
-				this.$content.on('click', '.lb-overlay, .lb-close', function() {
+				this.$content.on('click', '[data-albox=overlay], [data-albox=close]', function() {
 					$this.close();
 				});
 			} else {
-				this.$content.find('.lb-close').hide();
+				this.$content.find('[data-albox=close]').remove();
 			}
 			// Button options ? Okay, make it
-			if(null !== this.settings.button) {
+			if(false === $.isEmptyObject(this.settings.button)) {
+				this.$content.find('[data-albox=footer]').html('');
 				$.each(this.settings.button, function(index, value) {
-					var input = $('<input />').attr({
-						'type' : 'button',
-						'name' : index,
-						'id' : value.id,
-						'class' : value.className,
-						'value' : value.text
+					var button = $('<button />').attr({
+						name: index,
+						id: value.id,
+						'class': ('bootstrap' === $this.settings.skin ? 'btn ' : '') + (value['class'] || '')
 					});
-					$this.$content.find('.lb-footer').append(input);
+					button.text(value.text);
+					$this.$content.find('[data-albox=footer]').append(button);
 				});
 				// Call for button
-				this.$content.find('.lb-footer input:button').on('click', function() {
+				this.$content.find('[data-albox=footer] button').on('click', function() {
 					$this.settings.button[$(this).attr('name')].call();
 				});
-			} else {
-				this.$content.find('.lb-footer').remove();
 			}
-			// Image mode
-			if('image' === this.settings.mode) {
-				if(this.settings.current > 0) {
-					this.$content.find('.lb-previous').removeClass('lb-disable');
-				} else {
-					this.$content.find('.lb-previous').addClass('lb-disable');
-				}
-				if(this.settings.current < this.settings.items.length - 1) {
-					this.$content.find('.lb-next').html(this.settings.locale.navigate.next).removeClass('lb-disable');
-				} else {
-					this.$content.find('.lb-next').html(this.settings.locale.navigate.close).removeClass('lb-disable');
-				}
+			// Image / Step mode
+			if(('image' === this.settings.mode && this.settings.items.length > 1) || 'steps' === this.settings.mode) {
 				// Button callbacks
 				this.$content
-					.find('.lb-previous')
-						.html(this.settings.locale.navigate.previous)
+					.find('[data-albox=prev]')
+						.html(this.settings.locale.previous)
 						.on('click', function() {
-							if(false === $(this).hasClass('lb-disable')) {
-								$this.gallery($this.settings.current - 1);
-							}
-						})
-						.end()
-					.find('.lb-next')
-						.on('click', function() {
-							if(false === $(this).hasClass('lb-disable')) {
-								if($(this).text() === $this.settings.locale.navigate.close) {
-									$this.close();
+							if(false === $(this).hasClass('disabled')) {
+								if('steps' === $this.settings.mode) {
+									if(false !== $this.settings.beforePrevStep($this.settings.stepsKeys[$this.settings.current], $this.settings.current + 1)) {
+										$this.steps($this.settings.current - 1);
+									}
 								} else {
-									$this.gallery($this.settings.current + 1);
-								}
-							}
-						})
-						.end();
-			}
-			// Steps mode
-			if('steps' === this.settings.mode) {
-				// Button callbacks
-				this.$content
-					.find('.lb-previous')
-						.html(this.settings.locale.navigate.previous)
-						.on('click', function() {
-							if(false === $(this).hasClass('lb-disable')) {
-								if(false !== $this.settings.beforePrevStep($this.settings.stepsKeys[$this.settings.current], $this.settings.current + 1)) {
-									$this.steps($this.settings.current - 1);
+									$this.gallery($this.settings.current - 1);
 								}
 							}
 						})
 						.end()
-					.find('.lb-next')
-						.html(this.settings.locale.navigate.next)
+					.find('[data-albox=next]')
+						.html(this.settings.current < this.settings.items.length - 1 ? this.settings.locale.next : this.settings.locale.close)
+						.removeClass('disabled')
 						.on('click', function() {
-							if(false === $(this).hasClass('lb-disable')) {
-								if(false !== $this.settings.beforeNextStep($this.settings.stepsKeys[$this.settings.current], $this.settings.current + 1)) {
-									if($(this).text() === $this.settings.locale.navigate.stop) {
+							if(false === $(this).hasClass('disabled')) {
+								if('steps' === $this.settings.mode) {
+									if(false !== $this.settings.beforeNextStep($this.settings.stepsKeys[$this.settings.current], $this.settings.current + 1)) {
+										if($(this).text() === $this.settings.locale.close) {
+											$this.close();
+										} else {
+											$this.steps($this.settings.current + 1);
+										}
+									}
+								} else {
+									if($(this).text() === $this.settings.locale.close) {
 										$this.close();
 									} else {
-										$this.steps($this.settings.current + 1);
+										$this.gallery($this.settings.current + 1);
 									}
 								}
 							}
 						})
 						.end();
-				// In steps mode, disable first and last :input tab selector
-				$albox.on('keypress', ':input:visible:first,:input:visible:last', function(event) {
-					if(9 === event.keyCode) {
-						event.preventDefault();
-					}
-				});
+			} else {
+				if(true === $.isEmptyObject(this.settings.button)) {
+					this.$content.find('[data-albox=footer]').html('');
+				}
+				if('image' === this.settings.mode && this.settings.items.length === 0) {
+					this.$content.find('[data-albox=footer]').remove();
+				}
 			}
+			this.realSize = this.realSpace();
 		},
 		// Steps navigation
 		steps: function(index) {
@@ -299,18 +283,18 @@
 				var $this = this;
 				// Okay, step > 1
 				if(index > 0) {
-					this.$content.find('.lb-previous').removeClass('lb-disable');
+					this.$content.find('[data-albox=prev]').removeClass('disabled');
 				} else {
-					this.$content.find('.lb-previous').addClass('lb-disable');
+					this.$content.find('[data-albox=prev]').addClass('disabled');
 				}
 				// Step < max
 				this.$content
-					.find('.lb-next')
-						.html(index < this.settings.stepsKeys.length - 1 ? this.settings.locale.navigate.next : this.settings.locale.navigate.stop)
-						.removeClass('lb-disable');
+					.find('[data-albox=next]')
+						.html(index < this.settings.stepsKeys.length - 1 ? this.settings.locale.next : this.settings.locale.close)
+						.removeClass('disabled');
 				// Change counter and paginate
 				this.settings.current = index;
-				this.$content.find('.lb-count').html('Etape ' + (index + 1) + ' / ' + this.settings.stepsKeys.length);
+				this.$content.find('[data-albox=count]').html((index + 1) + ' / ' + this.settings.stepsKeys.length);
 				// Display next or prev step
 				$albox
 					.width(this.settings.width)
@@ -329,7 +313,7 @@
 					// Change title
 					$this.title(null, $this.settings.steps[Albox.instance.settings.stepsKeys[index]]);
 					// Reveal
-					$albox.find('> *').fadeTo($this.settings.speed, 1, function() {
+					$albox.find('> *').fadeTo(200, 1, function() {
 						//Callback
 						$this.settings.afterShow($this.settings.stepsKeys[index], index + 1);
 					});
@@ -342,38 +326,34 @@
 			if(index >= 0 && index < this.settings.items.length) {
 				// Ref
 				var $this = this;
-				// First picture
-				if(index > 0) {
-					this.$content.find('.lb-previous').removeClass('lb-disable');
-				} else {
-					this.$content.find('.lb-previous').addClass('lb-disable');
-				}
 				// Pagination
-				this.$content
-					.find('.lb-next')
-						.html(index < this.settings.items.length - 1 ? this.settings.locale.navigate.next : this.settings.locale.navigate.close)
-						.removeClass('lb-disable')
-						.end()
-					.find('.lb-title')
-						.fadeOut(this.settings.speed, function(){
-							$this.settings.current = index;
-							$this.reveal();
-					});
+				$this.settings.current = index;
+				$this.$content.find('[data-albox=close]').hide();
+				$this.reveal();
 			}
 		},
 		// Hide the main loading animation
-		stopLoading: function() {
-			this.$content.find('.lb-box')
-				.removeClass('lb-loading')
-				.addClass('lb-' + this.settings.mode);
+		loading: function() {
+			this.$content.find('[data-albox=loading]').toggle(0);
 			return this;
 		},
 		// Change title and subtitle
 		title: function(title, subtitle) {
-			this.$content.find('.lb-title')
-				.html((title || this.settings.title) + ('undefined' !== typeof subtitle && subtitle.length > 0 ? '<span>' + subtitle + '</span>' : ''));
-			return this.$content.find('.lb-title');
+			if(arguments.length > 0) {
+				this.$content.find('[data-albox=title]')
+					.html((title || this.settings.title) + ('undefined' !== typeof subtitle && subtitle.length > 0 ? '<span>' + subtitle + '</span>' : ''));
+			}
+			return this.$content.find('[data-albox=title]');
 		},
+		
+		displayInfo: function(display) {
+			if('show' === display) {
+				this.$content.find('[data-albox=close]' + (this.title().text().length > 0 ? ', [data-albox=title]' : '')).fadeIn(200);
+			} else {
+				this.$content.find('[data-albox=close], [data-albox=title]').fadeOut(200);
+			}
+		},
+		
 		// Open in window.open on picture's zooming
 		zoomable: function(enable) {
 			if(true === enable && true === this.settings.zoom) {
@@ -385,52 +365,26 @@
 				});
 			}
 		},
-		// Max allowed size
-		safeSize: function(element) {
-			// To be or not to be...
-			element = {
-				width: parseInt(element.outerWidth(true), 10) || 0,
-				height: parseInt(element.outerHeight(true), 10) || 0
-			};
-			// Return optimisez width and height
-			return {
-				width: Math.min(
-					parseInt($(window).width(), 10) - parseInt(this.settings.margin, 10),
-					Math.max(
-						element.width,
-						parseInt(this.settings.minWidth, 10),
-						('auto' === this.settings.width ? 0 : parseInt(this.settings.width, 10))
-					)
-				),
-				height: Math.min(
-					parseInt($(window).height(), 10) - parseInt(this.settings.margin, 10),
-					Math.max(
-						element.height,
-						parseInt(this.settings.minHeight, 10),
-						('auto' === this.settings.height ? 0 : parseInt(this.settings.height, 10))
-					)
-				)
-			};
-		},
+
 		// Close Albox
 		close: function(callback) {
 			// Assign this
 			var $this = this;
 			// Ensure we can close modal
-			if(false === this.$content.find('.lb-box').hasClass('lb-loading')) {
+			if(false === this.$content.find('[data-albox=loading]').is(':visible')) {
 				// Callback
 				this.settings.beforeClose();
 				// Hide box
-				this.$content.find('.lb-box').fadeOut(this.settings.speed, function() {
+				this.$content.find('[data-albox=box]').fadeOut(200, function() {
 					//Hide Albox
-					$this.$content.fadeOut($this.settings.speed, function() {
+					$this.$content.fadeOut(200, function() {
 						// Remove node
 						$(this).remove();
 						// Callback
 						$this.settings.afterClose();
 						// Personal callbacks
 						if('object' === typeof $this.settings.callbacks){
-							for(var i in $this.settings.callbacks){
+							for(var i in $this.settings.callbacks) {
 								if('undefined' !== typeof $this.settings.context[i]){
 									// Destroy it !
 									$($this.settings.context).removeData($this.settings.callbacks[i]);
@@ -448,46 +402,85 @@
 				});
 			}
 		},
-		position: function(callback) {
-			// .lb-box selector / this
-			var box = this.$content.find('.lb-box'),
-				$this = this;
-			// Reset CSS width & height
-			box.width('').height('');
-			// Display direct child of .lf-box
-			box.find('> *').show();
-			// Best size ?
-			var size = {
-				box: this.safeSize(box),
-				window: {
-					width: parseInt($(window).width(), 10),
-					height: parseInt($(window).height(), 10)
-				}
+		safeContentPosition: function() {
+			this.$content.css({
+				width: $(window).width() - parseInt(this.settings.margin, 10),
+				height: $(window).height() - parseInt(this.settings.margin, 10),
+				left: parseInt(this.settings.margin / 2, 10) + 'px',
+				top: parseInt(this.settings.margin / 2, 10) + 'px'
+			});
+		},
+		// Max allowed size
+		safeSize: function(element, prev) {
+			var width, height;
+			$albox.css('display', 'inline-block').height('').width('');
+			this.realSize = this.realSpace();
+			width = Math.min(this.realSize.maxWidth, Math.max(('auto' === this.settings.width ? $albox.outerWidth() : parseInt(this.settings.width, 10)), parseInt(this.settings.minWidth, 10)));
+			$albox.css('display', 'block').width(width - this.realSize.width);
+			height = Math.min(this.realSize.maxHeight, ('auto' === this.settings.height ? $albox.outerHeight(true) + this.realSize.delta : parseInt(this.settings.height, 10)));
+			if(height > this.realSize.maxHeight) {
+				height = 'auto';
+			}
+			return {
+				'width': width,
+				'height': height
 			};
-			// Keep resize of the box
-			this.boxSize = this.boxSize || [0, 0];
-			// Callback
-			this.settings.beforePos(size.box);
-			// Reset size & Animate it
-			box.width(parseInt(this.boxSize[0], 10)).height(parseInt(this.boxSize[1], 10)).stop().animate(size.box, {
-				duration: $this.settings.speed,
-				easing: 'linear', 
-				step: function(now, fx) {
-					// Move box during animation from top and left
-					if('width' === fx.prop) {
-						box.css('left', (size.window.width - parseInt(now, 10)) / 2);
-					} else {
-						box.css('top', (size.window.height - parseInt(now, 10)) / 2);
-					}
-				},
+		},
+		// realSpace
+		realSpace: function() {
+			var height = $albox.outerHeight(true) - $albox.height();
+			var width = $albox.outerWidth(true) - $albox.width();
+			var outerHeight = 0;
+			this.$content.find('[data-albox=box] > *:not([data-albox=content])').each(function() {
+				outerHeight += $(this).outerHeight(true);
+			});
+			return {
+				'width': width,
+				'height': height,
+				'maxWidth': this.$content.width() - width,
+				'maxHeight': this.$content.height() - height,
+				'delta': outerHeight
+			};
+		},
+		// Position
+		position: function(callback) {
+			var box = this.$content.find('[data-albox=box]'),
+				$this = this;
+			$this.safeContentPosition();
+			$('[data-albox=loading]').hide();
+			var size = this.safeSize();
+			this.boxSize = this.boxSize || false;
+			box.find('[data-albox=' + ('image' === $this.settings.mode ? 'header': 'footer') + '], [data-albox=content] > *').css('visibility', 'hidden');
+			if(false === this.boxSize) {
+				box.width(0).height(0);
+			}
+			$albox.css('visibility', 'visible');
+			box.css('visibility', 'visible');
+			this.settings.beforePos(size);
+			box.stop().animate({
+				width: size.width,
+				height: size.height,
+				'margin': '-' + Math.floor(size.height / 2, 10) + 'px 0 0 -' + Math.floor(size.width / 2, 10) + 'px'
+			}, {
+				duration: 200,
+				easing: 'linear',
 				complete: function() {
-					// Keep box resize
-					$this.boxSize = [size.box.width, size.box.height];
-					// Callback
-					$this.settings.afterPos(size.box);
-					// Internal Callback
-					if('function' === typeof callback) {
-						callback(size.box);
+					if(null !== $albox) {
+						$albox.height(size.height - ($this.realSize.delta + $this.realSize.height));
+						box.find('[data-albox=content] > *').css('visibility', 'visible').hide().fadeIn(200);
+						box.find('[data-albox=' + ('image' === $this.settings.mode ? 'header': 'footer') + ']').css('visibility', 'visible').hide().fadeIn(200, function() {
+							if('image' === $this.settings.mode) {
+								box.find('[data-albox=footer]').css('visibility', 'visible').fadeTo(200, 1);
+							}
+							if(false === $this.boxSize) {
+								box.find('[data-albox=close], [data-albox=title]').css('visibility', 'visible').hide().fadeTo(200, 1);
+								$this.boxSize = true;
+							}
+							$this.settings.afterPos(size);
+							if('function' === typeof callback) {
+								callback(size);
+							}
+						});
 					}
 				}
 			});
@@ -504,61 +497,83 @@
 				if(this.settings.items.length > 0) {
 					// Update settings
 					$.extend(this.settings, this.settings.items[this.settings.current]);
+					$this.$content.find('[data-albox=next], [data-albox=prev]').addClass('disabled');
 					// Changing image
-					$albox.find('img').fadeTo(0, 0).end().append($('<div />').addClass('lb-loading'));
-					// Update navigate legend
-					this.$content.find('.lb-count').html('Image ' + (this.settings.current + 1) + ' / ' + this.settings.items.length);
+					$('[data-albox=loading]').stop().fadeIn(200);
 				}
 				// Instanciate image
 				var imgLoad = new Image();
 				// If not load : error
 				imgLoad.onerror = function() {
 					// Close current Albox
-					$this.stopLoading().close(function() {
+					$albox.hide();
+					$this.loading().close(function() {
 						$.albox.alert();
 					});
 				};
 				// Everything okay
 				imgLoad.onload = function() {
-					// Remove navigation for stand-alone image
-					if($this.settings.items.length <= 1) {
-						$this.$content.find('.lb-navigate').remove();
-					}
-					// Init vars
-					var $image = this, 
-						maxSize = {
-							width: parseInt($(window).width(), 10) - parseInt($this.settings.margin, 10),
-							height: parseInt($(window).height(), 10) - parseInt($this.settings.margin, 10) - $this.$content.find('.lb-navigate').outerHeight(true)
-						};
-					// Resize
-					var ratio = $image.width > maxSize.width || $image.height > maxSize.height ? Math.max($image.width / maxSize.width, $image.height / maxSize.height) : 1;
-					// New size ?
-					var size = {
-						width: Math.round($image.width / ratio),
-						height: Math.round($image.height / ratio)
-					};
-					// Remove loading image
-					$this.stopLoading();
-					// Add image to content
-					$albox.html($('<img />').css(size).fadeTo(0, 0).attr('src', $this.settings.url));
-					// Update box title
-					$this.title($this.settings.title, $this.settings.description).hide();
-					// Need zooming ?
-					$this.zoomable($image.width !== size.width || $image.height !== size.height);
-					// Move main box to window center
-					$this.position(function() {
-						// Align title
-						if($this.$content.find('.lb-navigate').length) {
-							$this.$content.find('.lb-title').css('bottom', parseInt($this.$content.find('.lb-navigate').outerHeight(true), 10));
+
+					if(null !== $albox) {
+						// Gallery mode
+						if($this.settings.items.length > 0) {
+							// Update navigate legend
+							$this.$content.find('[data-albox=count]').html(($this.settings.current + 1) + ' / ' + $this.settings.items.length);
 						}
-						// Animate for beautiful effect :O
-						$albox.find('img').show().fadeTo($this.settings.speed, 1, function() {
-							// Display close button and title
-							$this.$content.find('.lb-title:not(:empty), .lb-close:hidden').slideDown($this.settings.speed);
+
+						// Add image to content
+						$albox.html($('<img />').attr('src', $this.settings.url));
+						// Init vars
+						var $image = this;
+						// Resize
+						var maxWidth = $this.realSize.maxWidth - $this.realSize.width;
+						var maxHeight = $this.realSize.maxHeight - $this.realSize.height - $this.realSize.delta;
+						var ratio = parseFloat(($image.width > maxWidth || $image.height > maxHeight ? Math.max($image.width / maxWidth, $image.height / maxHeight) : 1).toFixed(1));
+						// New size ?
+						var size = {
+							width: Math.min(maxWidth, Math.floor($image.width / ratio)),
+							height: Math.min(maxHeight, Math.floor($image.height / ratio))
+						};
+						// Remove loading image
+						$this.loading();
+						// Add image to content
+						$albox.find('img').css(size);
+						// Update box title
+						$this.title($this.settings.title, $this.settings.description).hide();
+						// Need zooming ?
+						$this.zoomable($image.width !== size.width || $image.height !== size.height);
+						// Move main box to window center
+						$this.position(function() {
+							// Align and display title
+							if($this.$content.find('[data-albox=title]').text().length > 0) {
+								$this.$content.find('[data-albox=title]').css({
+									bottom: $this.realSize.delta + ($this.realSize.height / 2),
+									width: $.albox.content().width()
+								}).fadeIn(200);
+							} else {
+								$this.$content.find('[data-albox=title]').hide();
+							}
+							$this.$content.find('[data-albox=next]').html($this.settings.current < $this.settings.items.length - 1 ? $this.settings.locale.next : $this.settings.locale.close).removeClass('disabled');
+							if($this.settings.current > 0) {
+								$this.$content.find('[data-albox=prev]').removeClass('disabled');
+							}
+							if($this.galeryHide) {
+								clearTimeout($this.galeryHide);
+							}
+							$this.galeryHide = setTimeout(function() { $this.displayInfo('hide'); }, 2E3);
+							$('[data-albox=content], [data-albox=header]').on('mousemove mouseleave', function(event) {
+								clearTimeout($this.galeryHide);
+								if('mousemove' === event.type) {
+									$this.displayInfo('show');
+								}
+								if($('[data-albox=header]').find(event.target).length === 0 || 'mouseleave' === event.type) {
+									$this.galeryHide = setTimeout(function() { $this.displayInfo('hide'); }, 2E3);
+								}
+							});
 							// Callback
 							$this.settings.afterShow();
 						});
-					});
+					}
 				};
 				// Load image
 				imgLoad.src = this.settings.url;
@@ -567,9 +582,9 @@
 				// Live content
 				if(null !== this.settings.content) {
 					// Remove loading
-					this.stopLoading();
+					this.loading();
 					// Update html
-					$albox.html(this.settings.content);
+					$albox.hide().html(this.settings.content);
 					// Update title
 					this.title();
 					// Move main box to window center
@@ -584,7 +599,7 @@
 						// Element exist ?
 						if($(this.settings.url).length) {
 							// Remove loading
-							this.stopLoading();
+							this.loading();
 							// Update content
 							$albox.hide().html($(this.settings.url).html());
 							// Update title
@@ -595,14 +610,15 @@
 								$this.settings.afterShow();
 							});
 						} else {
-							this.$content.find('.lb-previous').removeClass('lb-disable');
+							this.$content.find('[data-albox=prev]').removeClass('disabled');
 							// Close current Albox
-							this.stopLoading().close(function() {
+							$albox.hide();
+							this.loading().close(function() {
 								$.albox.alert();
 							});
 						}
 					// Iframe
-					} else if(this.settings.url.match(/^https?:\/\//i) || true === this.settings.iframe) {
+					} else if(this.settings.url.match(/^https?:\/\//i) && false === !!this.settings.crossDomain) {
 						// Update settings if auto height of auto width
 						if('auto' === this.settings.width) {
 							$.extend(this.settings, {width: 1E6});
@@ -614,70 +630,76 @@
 						this.title($this.settings.title);
 						// Iframe
 						$('<iframe />')
-							.attr('src', this.settings.url)
-							.addClass('lb-iframe')
-							.fadeTo(0, 0)
-							.css('height', this.safeSize(this.$content.find('.lb-box')).height - this.$content.find('.lb-header').height())
+							.attr({
+								src: this.settings.url,
+								'data-albox': 'iframe'
+							})
+							.css('visibility', 'hidden')
 							.load(function() {
 								if(null !== $albox) {
-									// Remove loading
-									$this.stopLoading();
 									// Center it
 									$this.position(function() {
-										// Resize iframe
-										$albox.find('.lb-iframe').fadeTo($this.settings.speed, 1, function() {
-											// Callback
-											$this.settings.afterShow();
-										});
-										
+										// Callback
+										$this.settings.afterShow();
 									});
 								}
 							})
 							.appendTo($albox);
 					// Ajax
 					} else if(null !== this.settings.url) {
-						$.post(this.settings.url,  this.settings.post, function(content) {
-							// Remove loading
-							$this.stopLoading();
-							// Update content
-							$albox.hide()
-								.html(function() {
-									// In steps mode
-									if('steps' === $this.settings.mode) {
-										// If we haven't the urrent steps
-										if($('#' + $this.settings.stepsKeys[$this.settings.current], content).length < 1) {
-											$this.stopLoading().close(function() {
-												$.albox.alert();
-											});
+						$.ajax({
+							url: this.settings.url,
+							type: (false === $.isEmptyObject(this.settings.post) ? 'POST' : 'GET'),
+							data: (false === $.isEmptyObject(this.settings.post) ? this.settings.post : this.settings.get),
+							xhrFields: {
+								withCredentials: !!this.settings.crossDomain
+							},
+							success: function(content) {
+								// Remove loading
+								$this.loading();
+								// Update content
+								$albox.hide()
+									.html(function() {
+										// In steps mode
+										if('steps' === $this.settings.mode) {
+											// If we haven't the urrent steps
+											if($('#' + $this.settings.stepsKeys[$this.settings.current], content).length < 1) {
+												$this.loading().close(function() {
+													$.albox.alert();
+												});
+											}
 										}
-									}
-									// Content
-									return content;
-								});
-							// Again in steps mode
-							if($this.settings.stepsKeys.length > 0) {
-								// Display steps
-								$this.steps($this.settings.current);
-							} else {
-								// Update title
-								$this.title($this.settings.title);
-								// Update position
-								$this.position(function() {
-									// Callback
-									$this.settings.afterShow();
+										// Content
+										return content;
+									});
+								// Again in steps mode
+								if($this.settings.stepsKeys.length > 0) {
+									// Display steps
+									$this.steps($this.settings.current);
+								} else {
+									// Update title
+									$this.title($this.settings.title);
+									// Update position
+									$this.position(function() {
+										// Callback
+										$this.settings.afterShow();
+									});
+								}
+							},
+							// Error time !
+							error: function(error) {
+								// Close box
+								$this.loading().close(function() {
+									$.albox.alert(error.status + ' - ' + error.statusText);
 								});
 							}
-						// Error time !
-						}).error(function(error) {
-							// Close box
-							$this.stopLoading().close(function() {
-								$.albox.alert(error.status + ' - ' + error.statusText);
-							});
 						});
 					}
 				} else {
+					$albox.hide();
 					// Close box
-					this.stopLoading().close(function() {
+					this.loading().close(function() {
+						
 						$.albox.alert();
 					});
 				}
@@ -726,21 +748,21 @@
 		}
 	};
 	// Closing
-	$.albox.close = function() {
+	$.albox.close = function(callback) {
 		if(Albox.stack.length) {
-			return Albox.instance.close();
+			return Albox.instance.close(callback);
 		}
 	};
 	// Previous
 	$.albox.previous = function() {
-		if(Albox.stack.length && $('.lb-previous', Albox.instance.$content).length) {
-			Albox.instance.$content.find('.lb-previous').trigger('click');
+		if(Albox.stack.length && $('[data-albox=prev]', Albox.instance.$content).length) {
+			Albox.instance.$content.find('[data-albox=prev]').trigger('click');
 		}
 	};
 	// Next
 	$.albox.next = function() {
-		if(Albox.stack.length && $('.lb-next', Albox.instance.$content).length) {
-			Albox.instance.$content.find('.lb-next').trigger('click');
+		if(Albox.stack.length && $('[data-albox=next]', Albox.instance.$content).length) {
+			Albox.instance.$content.find('[data-albox=next]').trigger('click');
 		}
 	};
 	// Change title
@@ -749,45 +771,93 @@
 			return Albox.instance.title(title, subtitle);
 		}
 	};
+	// Display loading
+	$.albox.loading = function() {
+		if(Albox.stack.length) {
+			Albox.instance.loading();
+		}
+	};
+	// Content access
+	$.albox.content = function() {
+		if(Albox.stack.length) {
+			return Albox.instance.$content.find('[data-albox=content]');
+		}
+		return null;
+	};
+	// Overwrite default settings
+	$.albox.setDefaults = function(settings) {
+		if(false === $.isEmptyObject(settings)) {
+			$.extend(window.Albox.settings, settings);
+		}
+	};
+
 	// Alert mod 
-	$.albox.alert = function(message, timeout, callback) {
-		timeout = ('undefined' === typeof timeout ? 4 : timeout);
-		$.albox({
-			content : message,
-			close: false,
-			afterLoad: function() {
-				// Display message
-				var settings = Albox.instance.settings,
-					locale = settings.locale.alert;
-				settings.content = settings.content || locale.notFound;
-				// Auto-close ? Okay, adding sentence
-				if(timeout > 0) {
-					var left = Math.max(1, timeout - 1);
-					settings.content += '<span>' + locale.close + ' <span>' + left + ' ' + (left > 1 ? locale.seconds.plural : locale.seconds.singular) + '</span>.</span>';
+	$.albox.alert = function() {
+		var data = {
+			content: arguments[0] || window.Albox.settings.locale.error,
+			title: 'string' === typeof arguments[1] ? arguments[1] : '',
+			callback: null,
+			timer: arguments.length > 1 ? !!arguments[arguments.length - 1] : false
+		};
+		// Get callback
+		for(var i in arguments) {
+			if('function' === typeof arguments[i]) {
+				data.callback = arguments[i];
+				break;
+			}
+		}
+		var extended = {};
+		if(true === data.timer) {
+			extended.button = {
+				close: {
+					text: window.Albox.settings.locale.close,
+					call: function(){
+						if('function' === typeof data.callback) {
+							data.callback();
+						} else {
+							$.albox.close();
+						}
+					}
 				}
-			},
-			afterShow: function() {
-				// Call for auto-close
-				if(timeout > 0) {
-					var locale = Albox.instance.settings.locale.alert,
-						change = $albox.find('span span'), timer = window.setInterval(function() {
+			};
+		} else {
+			extended = {
+				content: data.content + '<div class="muted">' + window.Albox.settings.locale.autoClose.replace('<x>', '<span>3').replace(/<[^\|>]+\|(.*)>/gi, '$1</span>') + '</div>',
+				afterShow: function() {
+					// Call for auto-close
+					var locale = window.Albox.settings.locale.autoClose.match(/<([^>]+)\|([^>]+)>/i),
+						change = $.albox.content().find('div span'), timer = window.setInterval(function() {
 							var num = parseInt(change.text(), 10) - 1;
-							change.text(num + ' ' + (num > 1 ? locale.seconds.plural : locale.seconds.singular));
+							if(num > 0) {
+								change.text(num + ' ' + (num > 1 ? locale[2] : locale[1]));
+							}
 						}, 1E3);
 					// Deacrease time
 					window.setTimeout(function() {
 						window.clearInterval(timer);
 						$.albox.close();
-					}, (timeout - 1) * 1E3);
+					}, 3E3);
+				},
+				afterClose: function() {
+					// Callback
+					if('function' === typeof data.callback) {
+						data.callback();
+					}
 				}
-			},
-			afterClose: function() {
-				// Callback
-				if ('function' === typeof callback) {
-					callback();
+			};
+		}
+		$.albox($.extend({
+			title: data.title,
+			content: data.content,
+			close: false,
+			afterLoad: function() {
+				// Auto-close ? Okay, adding sentence
+				$.albox.content().addClass('alerting');
+				if($.albox.title().text().length === 0) {
+					$.albox.content().parent().find('[data-albox=header]').remove();
 				}
 			}
-		}, 'alert');
+		}, extended));
 	};
 
 	/*!
@@ -813,7 +883,7 @@
 		// Simple usage
 		$('*[rel~=albox]').on('click', function() {
 			$.albox({
-				title: $(this).attr('title'),
+				title: this.title,
 				url: $(this).attr('href')
 			});
 			return false;
@@ -824,12 +894,12 @@
 			// Images stack
 			var items = [];
 			// Fold image
-			$(-1 !== $(this).attr('rel').search(/albox-gallery/i) ? '*[rel^=albox-gallery]' : this).each(function() {
+			$(-1 !== this.rel.search(/albox-gallery/i) ? '*[rel^=albox-gallery]' : this).each(function() {
 				items.push({
-					url: $(this).attr('src') || $(this).attr('href'),
-					title: $(this).attr('title') || '',
-					description: $(this).attr('rev') || '',
-					zoom: -1 !== $(this).attr('rel').search(/zoom/i)
+					url: this.src || this.href,
+					title: this.title || '',
+					description: this.rev || '',
+					zoom: -1 !== this.rel.search(/zoom/i)
 				});
 			});
 			// Single image
@@ -847,19 +917,28 @@
 
 		// Resize on tab focus if size change
 		$(window).on('focus', function() {
+			
+			// Albox exist
 			if(Albox.stack.length) {
+				
+				// On window resize
 				$(window).on('resize', function() {
-					$.albox.position();
+					if(this.resizeTO) {
+						clearTimeout(this.resizeTO);
+					}
+					this.resizeTO = setTimeout(function() {
+						$.albox.position();
+					}, 500);
 				});
 			}
 		});
 
 		// Using keyboard ?
 		$(document).keypress(function(event) {
-			if(Albox.stack.length && true === Albox.instance.settings.keyboard) {
-				if(37 === event.keyCode) { // left
+			if(Albox.stack.length) {
+				if(37 === event.keyCode && 'image' == Albox.instance.settings.mode) { // left
 					$.albox.previous();
-				} else if(39 === event.keyCode) { // right
+				} else if(39 === event.keyCode && 'image' == Albox.instance.settings.mode) { // right
 					$.albox.next();
 				} else if(27 === event.keyCode && true === Albox.instance.settings.close) { // escape
 					$.albox.close();
