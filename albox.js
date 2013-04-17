@@ -21,7 +21,7 @@
 (function($) {
 
 	// Validator (JSHint - http://www.jshint.com/)
-	/*jshint forin:true, noarg:true, noempty:true, eqeqeq:true, bitwise:true, strict:true, undef:true, unused:true, curly:true, browser:true, jquery:true, indent:4, maxerr:50 */
+	/*jshint browser:true, jquery:true */
 	'use strict';
 
 	// Global var declaration
@@ -72,7 +72,7 @@
 
 	// Rewrite config
 	Albox.config = function(settings) {
-		AlboxSettings = settings;
+		$.extend(Albox.settings, settings || {});
 	};
 
 	// Default Settings
@@ -411,7 +411,7 @@
 			});
 		},
 		// Max allowed size
-		safeSize: function(element, prev) {
+		safeSize: function() {
 			var width, height;
 			$albox.css('display', 'inline-block').height('').width('');
 			this.realSize = this.realSpace();
@@ -618,7 +618,7 @@
 							});
 						}
 					// Iframe
-					} else if(this.settings.url.match(/^https?:\/\//i) && false === !!this.settings.crossDomain) {
+					} else if(this.settings.url.match(/^https?:\/\//i) && false === this.settings.crossDomain) {
 						// Update settings if auto height of auto width
 						if('auto' === this.settings.width) {
 							$.extend(this.settings, {width: 1E6});
@@ -936,9 +936,9 @@
 		// Using keyboard ?
 		$(document).keypress(function(event) {
 			if(Albox.stack.length) {
-				if(37 === event.keyCode && 'image' == Albox.instance.settings.mode) { // left
+				if(37 === event.keyCode && 'image' === Albox.instance.settings.mode) { // left
 					$.albox.previous();
-				} else if(39 === event.keyCode && 'image' == Albox.instance.settings.mode) { // right
+				} else if(39 === event.keyCode && 'image' === Albox.instance.settings.mode) { // right
 					$.albox.next();
 				} else if(27 === event.keyCode && true === Albox.instance.settings.close) { // escape
 					$.albox.close();
