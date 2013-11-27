@@ -193,7 +193,7 @@
 					.find('[data-albox=next]').addClass('btn btn-small pull-right');
 			}
 			// Assign global var $albox
-			$albox = $.albox.content();
+			$albox = this.$content.find('[data-albox=content]');
 			// Hide controls
 			this.$content.find('[data-albox=content], [data-albox=footer], [data-albox=close], [data-albox=title]').css('visibility', 'hidden');
 
