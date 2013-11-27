@@ -67,7 +67,7 @@
 	Albox.pop = function(instance) {
 		Albox.stack.shift(instance);
 		Albox.instance = Albox.stack[0] || null;
-		$albox = $.albox.content();
+		$albox = null === Albox.instance ? null : Albox.instance.$content.find('[data-albox=content]');
 	};
 
 	// Rewrite config
