@@ -3,7 +3,7 @@ $(document).ready(function(){
     $('code').each(function(){
         $(this).html($(this).html().replace(/\\t/g, '<s>'));
     });
-    $('a').live('click', function(event){
+    $('.main a').live('click', function(event){
         event.preventDefault();
         if(/\#section\:(.+)/gi.test($(this).attr('href'))){
             $('html, body').animate({'scrollTop' : $('a[name="' + $(this).attr('href').replace('#', '') + '"]').offset().top}, 400);
