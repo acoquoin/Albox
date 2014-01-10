@@ -4,4 +4,4 @@ Albox (Another Lightbox) - jQuery Modal
 
 
 ## Examples
-You can go to [this website](http://acoquoin.github.io/Albox/) to see all the examples
+You can see [the example website](http://acoquoin.github.io/Albox/) for a list of features
